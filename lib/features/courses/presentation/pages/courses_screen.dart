@@ -55,8 +55,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
     if (normalizedQuery.isEmpty) return true;
     final langCode = Localizations.localeOf(context).languageCode;
     final normalizedName = _normalizeQuery(course.localizedName(langCode));
+    final normalizedSubject = _normalizeQuery(
+      course.localizedSubject(langCode),
+    );
     final normalizedId = course.courseID.toString();
     return normalizedName.contains(normalizedQuery) ||
+        normalizedSubject.contains(normalizedQuery) ||
         normalizedId.contains(normalizedQuery);
   }
 
@@ -117,7 +121,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
+                    ),
                     const SizedBox(height: 16),
                     Text(state.message, textAlign: TextAlign.center),
                     const SizedBox(height: 16),
@@ -131,20 +139,24 @@ class _CoursesScreenState extends State<CoursesScreen> {
             } else if (state is CourseLoaded) {
               final filteredLevels = _filterLevels(state.levels, _searchQuery);
               if (state.levels.isEmpty) {
-                return Center(child: Text(l10n.noLectures)); // Fallback if no specific "no courses" key
+                return Center(
+                  child: Text(l10n.noLectures),
+                ); // Fallback if no specific "no courses" key
               }
 
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  final horizontalPadding =
-                      constraints.maxWidth < 360 ? 12.0 : 16.0;
+                  final horizontalPadding = constraints.maxWidth < 360
+                      ? 12.0
+                      : 16.0;
 
                   return Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 760),
                       child: Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
                         child: Column(
                           children: [
                             const SizedBox(height: 8),
@@ -162,7 +174,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                 filled: true,
                                 fillColor: isDark
                                     ? AppColors.inputFillDark
-                                    : AppColors.cardLight.withValues(alpha: 0.65),
+                                    : AppColors.cardLight.withValues(
+                                        alpha: 0.65,
+                                      ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                   vertical: 14,
@@ -178,7 +192,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
                               Expanded(
                                 child: Center(
                                   child: Text(
-                                    Localizations.localeOf(context).languageCode == 'ar'
+                                    Localizations.localeOf(
+                                              context,
+                                            ).languageCode ==
+                                            'ar'
                                         ? 'لا توجد نتائج مطابقة'
                                         : 'No matching courses found',
                                     style: theme.textTheme.bodyLarge,
@@ -212,8 +229,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                               Padding(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                  vertical: 8.0,
-                                                ),
+                                                      vertical: 8.0,
+                                                    ),
                                                 child: Text(
                                                   "${l10n.semester} ${semester.semester}",
                                                   style: const TextStyle(
@@ -223,9 +240,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                                   ),
                                                 ),
                                               ),
-                                              ...semester.courses.map((course) =>
-                                                  _buildCourseItem(context, course,
-                                                      l10n, isDark)),
+                                              ...semester.courses.map(
+                                                (course) => _buildCourseItem(
+                                                  context,
+                                                  course,
+                                                  l10n,
+                                                  isDark,
+                                                ),
+                                              ),
                                             ],
                                           );
                                         }),
@@ -250,9 +272,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
     );
   }
 
-  Widget _buildCourseItem(BuildContext context, CourseModel course,
-      AppLocalizations l10n, bool isDark) {
+  Widget _buildCourseItem(
+    BuildContext context,
+    CourseModel course,
+    AppLocalizations l10n,
+    bool isDark,
+  ) {
     final langCode = Localizations.localeOf(context).languageCode;
+    final subjectName = course.localizedSubject(langCode);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -265,13 +292,32 @@ class _CoursesScreenState extends State<CoursesScreen> {
           course.localizedName(langCode),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        subtitle: Row(
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.hourglass_bottom,
-                size: 16, color: isDark ? Colors.grey[400] : Colors.grey),
-            const SizedBox(width: 4),
-            Text("${course.creditHours} ${l10n.creditHours}",
-                style: TextStyle(color: isDark ? Colors.grey[400] : null)),
+            if (subjectName.isNotEmpty)
+              Text(
+                subjectName,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.grey[400] : Colors.grey[700],
+                ),
+              ),
+            if (subjectName.isNotEmpty) const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.hourglass_bottom,
+                  size: 16,
+                  color: isDark ? Colors.grey[400] : Colors.grey,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  "${course.creditHours} ${l10n.creditHours}",
+                  style: TextStyle(color: isDark ? Colors.grey[400] : null),
+                ),
+              ],
+            ),
           ],
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),

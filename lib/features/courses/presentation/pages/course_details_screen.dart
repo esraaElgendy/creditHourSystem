@@ -19,7 +19,7 @@ class CourseDetailsScreen extends StatefulWidget {
 
 class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   // Mock state for interactivity
-  bool isRegistered = false; 
+  bool isRegistered = false;
 
   @override
   void initState() {
@@ -33,14 +33,61 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final course = widget.course;
-    
+    final langCode = Localizations.localeOf(context).languageCode;
+    final localizedName = _localizedCourseField(
+      course,
+      langCode,
+      fallbackKey: 'name',
+      enKeys: const [
+        'nameEn',
+        'nameEN',
+        'englishName',
+        'courseNameEn',
+        'courseNameEN',
+        'name_en',
+      ],
+      arKeys: const [
+        'nameAr',
+        'nameAR',
+        'arabicName',
+        'courseNameAr',
+        'courseNameAR',
+        'name_ar',
+      ],
+    );
+    final localizedSubject = _localizedCourseField(
+      course,
+      langCode,
+      fallbackKey: 'subject',
+      enKeys: const [
+        'subjectEn',
+        'subjectEN',
+        'englishSubject',
+        'subjectNameEn',
+        'subjectNameEN',
+        'courseSubjectEn',
+        'courseSubjectEN',
+        'subject_en',
+      ],
+      arKeys: const [
+        'subjectAr',
+        'subjectAR',
+        'arabicSubject',
+        'subjectNameAr',
+        'subjectNameAR',
+        'courseSubjectAr',
+        'courseSubjectAR',
+        'subject_ar',
+      ],
+    );
+
     // Derived values from mock
     final isFull = (course['enrolled'] ?? 0) >= (course['capacity'] ?? 0);
     final hasConflict = course['hasConflict'] ?? false;
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent, 
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: BackButton(color: isDark ? Colors.white : Colors.black),
       ),
@@ -49,131 +96,210 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    course['name'] ?? "Course Name",
-                    style: GoogleFonts.cairo(
-                      fontSize: 24,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  localizedName.isNotEmpty
+                      ? localizedName
+                      : course['name'] ?? "Course Name",
+                  style: GoogleFonts.cairo(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    course['code'] ?? "CODE",
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
                     ),
                   ),
-                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      course['code'] ?? "CODE",
-                      style: const TextStyle(
-                        color: Colors.white,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (localizedSubject.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  localizedSubject,
+                  style: GoogleFonts.cairo(
+                    fontSize: 16,
+                    color: isDark ? Colors.grey[400] : Colors.grey[700],
+                  ),
+                ),
+              ),
+            Text(
+              course['instructors'] ?? "",
+              style: GoogleFonts.cairo(fontSize: 16),
+            ),
+
+            const SizedBox(height: 30),
+
+            _buildInfoRow(
+              Icons.access_time,
+              l10n.creditHoursLabel(course['creditHours'] ?? 3),
+              isDark,
+            ),
+            const SizedBox(height: 16),
+
+            Text(course['time'] ?? "", style: GoogleFonts.cairo(fontSize: 16)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  l10n.prerequisites + " : ",
+                  style: GoogleFonts.cairo(fontSize: 16),
+                ),
+                Text(
+                  course['prerequisite'] ?? "",
+                  style: GoogleFonts.cairo(
+                    fontSize: 16,
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
+
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  size: 28,
+                  color: isDark ? Colors.grey[400] : Colors.grey[700],
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "${course['enrolled']}/${course['capacity']}",
+                  style: GoogleFonts.cairo(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 40),
+
+            // Warnings
+            if (isFull && !isRegistered) _buildWarning(l10n.courseFull),
+            if (hasConflict && !isRegistered)
+              _buildWarning(l10n.courseConflict),
+
+            // Registration Status
+            if (isRegistered)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.registered,
+                      style: GoogleFonts.cairo(
+                        fontSize: 18,
+                        color: Colors.green,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ],
+                ),
+              ),
+
+            const Spacer(),
+
+            // Action Button
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isRegistered
+                      ? (isDark
+                            ? AppColors.inputFillDark
+                            : const Color(0xffDBDEFF))
+                      : AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ],
-             ),
-             const SizedBox(height: 10),
-             Text(
-                course['instructors'] ?? "",
-                style: GoogleFonts.cairo(fontSize: 16),
-             ),
-
-             const SizedBox(height: 30),
-
-             _buildInfoRow(Icons.access_time, l10n.creditHoursLabel(course['creditHours'] ?? 3), isDark),
-             const SizedBox(height: 16),
-             
-             Text(
-               course['time'] ?? "",
-               style: GoogleFonts.cairo(fontSize: 16),
-             ),
-             const SizedBox(height: 10),
-             Row(
-               children: [
-                 Text(l10n.prerequisites + " : ", style: GoogleFonts.cairo(fontSize: 16)),
-                 Text(
-                   course['prerequisite'] ?? "",
-                   style: GoogleFonts.cairo(fontSize: 16, color: Colors.blue, fontWeight: FontWeight.bold),
-                 ),
-               ],
-             ),
-
-             const SizedBox(height: 30),
-             
-             Row(
-                children: [
-                  Icon(Icons.person_outline, size: 28, color: isDark ? Colors.grey[400] : Colors.grey[700]),
-                  const SizedBox(width: 8),
-                  Text(
-                    "${course['enrolled']}/${course['capacity']}",
-                    style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.w500),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  setState(() {
+                    isRegistered = !isRegistered;
+                  });
+                },
+                child: Text(
+                  isRegistered ? l10n.drop : l10n.register,
+                  style: GoogleFonts.cairo(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isRegistered
+                        ? (isDark ? Colors.white : AppColors.primary)
+                        : Colors.white,
                   ),
-                ],
-             ),
-
-             const SizedBox(height: 40),
-
-             // Warnings
-             if (isFull && !isRegistered)
-                _buildWarning(l10n.courseFull),
-             if (hasConflict && !isRegistered)
-                _buildWarning(l10n.courseConflict),
-
-             // Registration Status
-             if (isRegistered)
-               Padding(
-                 padding: const EdgeInsets.only(bottom: 20),
-                 child: Row(
-                   children: [
-                     const Icon(Icons.check_circle_outline, color: Colors.green),
-                     const SizedBox(width: 8),
-                     Text(l10n.registered, style: GoogleFonts.cairo(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold)),
-                   ],
-                 ),
-               ),
-
-             const Spacer(),
-
-             // Action Button
-             SizedBox(
-               width: double.infinity,
-               height: 55,
-               child: ElevatedButton(
-                 style: ElevatedButton.styleFrom(
-                   backgroundColor: isRegistered ? (isDark ? AppColors.inputFillDark : const Color(0xffDBDEFF)) : AppColors.primary,
-                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                   elevation: 0,
-                 ),
-                 onPressed: () {
-                   setState(() {
-                     isRegistered = !isRegistered;
-                   });
-                 },
-                 child: Text(
-                   isRegistered ? l10n.drop : l10n.register,
-                   style: GoogleFonts.cairo(
-                     fontSize: 20, 
-                     fontWeight: FontWeight.bold,
-                     color: isRegistered ? (isDark ? Colors.white : AppColors.primary) : Colors.white,
-                   ),
-                 ),
-               ),
-             ),
-             const SizedBox(height: 30),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
+  String _localizedCourseField(
+    Map<String, dynamic> course,
+    String languageCode, {
+    required String fallbackKey,
+    required List<String> enKeys,
+    required List<String> arKeys,
+  }) {
+    String? value(String key) => course[key]?.toString().trim();
+
+    final values = <dynamic>[];
+    if (languageCode == 'ar') {
+      values.addAll(arKeys.map(value));
+      values.addAll(enKeys.map(value));
+    } else {
+      values.addAll(enKeys.map(value));
+      values.addAll(arKeys.map(value));
+    }
+    values.add(value(fallbackKey));
+
+    return _firstNonEmptyString(values) ?? '';
+  }
+
+  String? _firstNonEmptyString(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim();
+      if (text != null && text.isNotEmpty) return text;
+    }
+    return null;
+  }
+
   Widget _buildInfoRow(IconData icon, String text, bool isDark) {
     return Row(
       children: [
-        Icon(icon, size: 24, color: isDark ? Colors.grey[400] : Colors.grey[700]),
+        Icon(
+          icon,
+          size: 24,
+          color: isDark ? Colors.grey[400] : Colors.grey[700],
+        ),
         const SizedBox(width: 10),
         Text(text, style: GoogleFonts.cairo(fontSize: 16)),
       ],
