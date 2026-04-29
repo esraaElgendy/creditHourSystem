@@ -439,6 +439,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Credit Hours'**
   String get creditHours;
+
+  /// No description provided for @gallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get gallery;
+
+  /// No description provided for @camera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get camera;
+
+  /// No description provided for @selectImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Image'**
+  String get selectImage;
 }
 
 class _AppLocalizationsDelegate

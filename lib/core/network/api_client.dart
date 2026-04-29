@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/app_preferences.dart';
 import 'api_constants.dart';
+import 'dart:io';
 
 /// API Exception class for handling API errors
 class ApiException implements Exception {
@@ -122,6 +123,51 @@ class ApiClient {
       final response = await _httpClient
           .get(uri, headers: headers)
           .timeout(ApiConstants.connectionTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// POST multipart request for file uploads (multipart/form-data)
+  /// `fields` can contain additional form fields.
+  Future<Map<String, dynamic>> postMultipart(
+    String endpoint, {
+    Map<String, String>? fields,
+    Map<String, File>? files,
+    bool requiresAuth = true,
+  }) async {
+    try {
+      final uri = Uri.parse(_getEndpoint(endpoint));
+
+      // Create request
+      final request = http.MultipartRequest('POST', uri);
+
+      // Attach headers manually (but do not set Content-Type)
+      final headers = await _getHeaders(requiresAuth: requiresAuth);
+      // Remove content-type header if present, MultipartRequest will set its own
+      headers.remove('Content-Type');
+      request.headers.addAll(headers);
+
+      // Add form fields
+      if (fields != null) request.fields.addAll(fields);
+
+      // Attach files
+      if (files != null) {
+        for (final entry in files.entries) {
+          final fieldName = entry.key;
+          final file = entry.value;
+          final stream = http.ByteStream(file.openRead());
+          final length = await file.length();
+          final multipartFile = http.MultipartFile(fieldName, stream, length, filename: file.path.split(Platform.pathSeparator).last);
+          request.files.add(multipartFile);
+        }
+      }
+
+      final streamed = await request.send().timeout(ApiConstants.connectionTimeout);
+      final response = await http.Response.fromStream(streamed);
 
       return _handleResponse(response);
     } catch (e) {

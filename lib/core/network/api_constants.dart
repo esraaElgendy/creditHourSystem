@@ -10,6 +10,8 @@ class ApiConstants {
   // Student Endpoints
   static const String studentProfile = '/Student/profile';
   static const String editProfile = '/Student/edit';
+  // Placeholder upload endpoint for profile picture. Update when backend provides the final path.
+  static const String uploadProfileImage = '/Student/uploadProfilePicture';
   static const String dashboard = '/Dashboard';
   
   // Course Endpoints

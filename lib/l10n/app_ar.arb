@@ -53,11 +53,12 @@
   "major": "التخصص",
   "myGrades": "درجاتي",
   "mySchedule": "جدول المحاضرات",
-  "courseRegistration": "تسجيل المواد",
-  "profile": "الملف الشخصي",
   "score": "الدرجة",
   "noLectures": "لا توجد محاضرات في هذا اليوم",
   "level": "المستوى",
   "semester": "الفصل الدراسي",
-  "creditHours": "ساعة معتمدة"
+  "creditHours": "الساعات المعتمدة",
+  "gallery": "المعرض",
+  "camera": "الكاميرا",
+  "selectImage": "اختر صورة"
 }

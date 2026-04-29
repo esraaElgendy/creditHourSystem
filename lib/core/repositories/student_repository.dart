@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import '../models/dashboard_model.dart';
 import '../models/user_model.dart';
 import '../network/api_client.dart';
@@ -23,11 +24,14 @@ class StudentRepository {
 
     final userData = response['data'] ?? response['user'] ?? response;
     final user = UserModel.fromJson(userData);
+    final freshProfilePictureUrl = _cleanProfilePictureUrl(user.profilePictureUrl);
 
-    // Merge logic: Preserve fields like GPA that might not be in the profile response
+    // Merge logic: Preserve fields like GPA that might not be in the profile response,
+    // but always trust the profile endpoint for profilePictureUrl so stale cached
+    // images do not survive when the backend returns null/empty.
     final cachedData = await getCachedProfile();
     final updatedUser = cachedData != null 
-        ? cachedData.copyWith(
+        ? UserModel(
             id: user.id.isNotEmpty ? user.id : cachedData.id,
             name: user.name.isNotEmpty ? user.name : cachedData.name,
             nameAr: user.nameAr ?? cachedData.nameAr,
@@ -38,8 +42,8 @@ class StudentRepository {
             major: user.major ?? cachedData.major,
             year: user.year ?? cachedData.year,
             gpa: (user.gpa != null && user.gpa! > 0) ? user.gpa : (cachedData.gpa ?? 0.0),
-            completedCreditHours: (user.completedCreditHours != null && user.completedCreditHours! > 0) 
-                ? user.completedCreditHours 
+            completedCreditHours: (user.completedCreditHours != null && user.completedCreditHours! > 0)
+                ? user.completedCreditHours
                 : cachedData.completedCreditHours,
             remainingCreditHours: (user.remainingCreditHours != null && user.remainingCreditHours! > 0)
                 ? user.remainingCreditHours
@@ -48,8 +52,9 @@ class StudentRepository {
             overallProgress: (user.overallProgress != null && user.overallProgress! > 0)
                 ? user.overallProgress
                 : cachedData.overallProgress,
+            profilePictureUrl: freshProfilePictureUrl,
           )
-        : user;
+        : user.copyWith(profilePictureUrl: freshProfilePictureUrl);
 
     await _preferences.saveUserData(jsonEncode(updatedUser.toJson()));
     return updatedUser;
@@ -191,5 +196,60 @@ class StudentRepository {
     // Save to preferences
     await _preferences.saveUserData(jsonEncode(updatedUser.toJson()));
     return updatedUser;
+  }
+
+  /// Upload profile image to backend.
+  /// If backend endpoint is not available yet this method will update local cache
+  /// with a local file path so the app can show immediate preview. When backend
+  /// is ready, ApiClient.postMultipart will be used to send the file.
+  Future<UserModel> uploadProfileImage({
+    required File file,
+    String lang = 'en',
+  }) async {
+    final response = await _apiClient.postMultipart(
+      ApiConstants.uploadProfileImage + '?lang=$lang',
+      files: {'profilePicture': file},
+      requiresAuth: true,
+    );
+
+    final userData = response['data'] ?? response['user'] ?? response;
+    final cachedData = await getCachedProfile();
+    final uploadedUrl = _extractUploadedProfilePictureUrl(userData);
+
+    if (userData is Map<String, dynamic>) {
+      final user = UserModel.fromJson(userData);
+      final cleanUrl = _cleanProfilePictureUrl(user.profilePictureUrl) ?? uploadedUrl;
+      final updated = cachedData != null
+          ? cachedData.copyWith(profilePictureUrl: cleanUrl ?? cachedData.profilePictureUrl)
+          : user.copyWith(profilePictureUrl: cleanUrl);
+
+      await saveProfile(updated);
+      return updated;
+    }
+
+    if (uploadedUrl != null && cachedData != null) {
+      final updated = cachedData.copyWith(profilePictureUrl: uploadedUrl);
+      await saveProfile(updated);
+      return updated;
+    }
+
+    if (cachedData != null) return cachedData;
+    throw ApiException('Profile image uploaded, but profile data was not returned.');
+  }
+
+  String? _cleanProfilePictureUrl(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  String? _extractUploadedProfilePictureUrl(dynamic data) {
+    if (data is String) return _cleanProfilePictureUrl(data);
+    if (data is! Map<String, dynamic>) return null;
+
+    for (final key in const ['profilePictureUrl', 'profilePicture', 'imageUrl', 'url']) {
+      final value = _cleanProfilePictureUrl(data[key]?.toString());
+      if (value != null) return value;
+    }
+    return null;
   }
 }

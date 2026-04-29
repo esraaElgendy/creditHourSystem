@@ -179,5 +179,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get semester => 'الفصل الدراسي';
 
   @override
-  String get creditHours => 'ساعة معتمدة';
+  String get creditHours => 'الساعات المعتمدة';
+
+  @override
+  String get gallery => 'المعرض';
+
+  @override
+  String get camera => 'الكاميرا';
+
+  @override
+  String get selectImage => 'اختر صورة';
 }

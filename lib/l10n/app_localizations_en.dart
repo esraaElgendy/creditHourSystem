@@ -180,4 +180,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get creditHours => 'Credit Hours';
+
+  @override
+  String get gallery => 'Gallery';
+
+  @override
+  String get camera => 'Camera';
+
+  @override
+  String get selectImage => 'Select Image';
 }

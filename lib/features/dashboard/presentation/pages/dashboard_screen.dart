@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/bloc/student_cubit.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/profile_avatar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../courses/presentation/pages/courses_screen.dart';
 import '../../../grades/presentation/pages/grades_screen.dart';
@@ -58,6 +59,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         int remainingHours = 0;
         int totalHours = 0;
         double progressValue = 0.0;
+        String? profilePictureUrl;
 
         if (state is StudentLoaded) {
           final langCode = Localizations.localeOf(context).languageCode;
@@ -68,6 +70,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           remainingHours = state.user.remainingCreditHours ?? 0;
           totalHours = state.user.totalCreditHours ?? (completedHours + remainingHours);
           progressValue = state.user.overallProgress ?? 0.0;
+          profilePictureUrl = state.user.profilePictureUrl;
         } else if (state is StudentLoading && state.previousUser != null) {
           final user = state.previousUser!;
           final langCode = Localizations.localeOf(context).languageCode;
@@ -78,6 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           remainingHours = user.remainingCreditHours ?? 0;
           totalHours = user.totalCreditHours ?? (completedHours + remainingHours);
           progressValue = user.overallProgress ?? 0.0;
+          profilePictureUrl = user.profilePictureUrl;
         } else if (state is StudentError && state.previousUser != null) {
           final user = state.previousUser!;
           final langCode = Localizations.localeOf(context).languageCode;
@@ -88,11 +92,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           remainingHours = user.remainingCreditHours ?? 0;
           totalHours = user.totalCreditHours ?? (completedHours + remainingHours);
           progressValue = user.overallProgress ?? 0.0;
+          profilePictureUrl = user.profilePictureUrl;
         }
 
         final progress = totalHours > 0 
             ? (progressValue > 0 ? progressValue / 100.0 : (completedHours / totalHours))
             : 0.0;
+
+        final initials = studentName.isNotEmpty && studentName != l10n.students
+            ? studentName.split(' ').where((e) => e.isNotEmpty).map((e) => e[0]).take(2).join().toUpperCase()
+            : 'ST';
 
         return Scaffold(
           backgroundColor: theme.scaffoldBackgroundColor,
@@ -129,29 +138,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header Section: Name & ID Logic
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Header Section: Name & ID Logic with Avatar
+                      Row(
                         children: [
-                          Text(
-                            studentName,
-                            style: GoogleFonts.cairo(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : theme.primaryColor,
+                          GestureDetector(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                            child: ProfileAvatar(
+                              imageUrl: profilePictureUrl,
+                              initials: initials,
+                              radius: 30,
+                              showEditButton: false,
                             ),
                           ),
-                          if (studentId.isNotEmpty)
-                            Text(
-                              "${l10n.studentId}: $studentId",
-                              style: GoogleFonts.cairo(
-                                fontSize: 14,
-                                color: AppColors.textGrey,
-                              ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  studentName,
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : theme.primaryColor,
+                                  ),
+                                ),
+                                if (studentId.isNotEmpty)
+                                  Text(
+                                    "${l10n.studentId}: $studentId",
+                                    style: GoogleFonts.cairo(
+                                      fontSize: 14,
+                                      color: AppColors.textGrey,
+                                    ),
+                                  ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
                       // Stats Grid Logic: Displaying Grade and Hours
                       _buildStatCard(

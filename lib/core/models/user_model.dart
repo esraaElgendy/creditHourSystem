@@ -16,6 +16,7 @@ class UserModel extends Equatable {
   final int? remainingCreditHours;
   final int? totalCreditHours;
   final double? overallProgress;
+  final String? profilePictureUrl;
 
   const UserModel({
     required this.id,
@@ -32,24 +33,40 @@ class UserModel extends Equatable {
     this.remainingCreditHours,
     this.totalCreditHours,
     this.overallProgress,
+    this.profilePictureUrl,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id']?.toString() ?? json['studentID']?.toString() ?? '',
-      name: json['name']?.toString() ?? json['fullName']?.toString() ?? json['userName']?.toString() ?? '',
+      name:
+          json['name']?.toString() ??
+          json['fullName']?.toString() ??
+          json['userName']?.toString() ??
+          '',
       nameAr: json['nameAr']?.toString(),
       nameEn: json['nameEn']?.toString(),
       email: json['email']?.toString() ?? '',
       phone: json['phone']?.toString() ?? json['phoneNumber']?.toString(),
-      studentId: json['studentId']?.toString() ?? json['studentCode']?.toString() ?? json['studentID']?.toString(),
+      studentId:
+          json['studentId']?.toString() ??
+          json['studentCode']?.toString() ??
+          json['studentID']?.toString(),
       major: json['major']?.toString() ?? json['department']?.toString(),
       year: json['year']?.toString() ?? json['level']?.toString(),
       gpa: _toDouble(json['gpa'] ?? json['GPA'] ?? json['gba']),
-      completedCreditHours: _toInt(json['completedCreditHours'] ?? json['completedHours']),
-      remainingCreditHours: _toInt(json['remainingCreditHours'] ?? json['remainingHours']),
+      completedCreditHours: _toInt(
+        json['completedCreditHours'] ?? json['completedHours'],
+      ),
+      remainingCreditHours: _toInt(
+        json['remainingCreditHours'] ?? json['remainingHours'],
+      ),
       totalCreditHours: _toInt(json['totalCreditHours'] ?? json['totalHours']),
       overallProgress: _toDouble(json['overallProgress']),
+      profilePictureUrl:
+          json['profilePictureUrl']?.toString() ??
+          json['profilePicture']?.toString() ??
+          json['imageUrl']?.toString(),
     );
   }
 
@@ -85,6 +102,7 @@ class UserModel extends Equatable {
       'remainingCreditHours': remainingCreditHours,
       'totalCreditHours': totalCreditHours,
       'overallProgress': overallProgress,
+      'profilePictureUrl': profilePictureUrl,
     };
   }
 
@@ -103,6 +121,7 @@ class UserModel extends Equatable {
     int? remainingCreditHours,
     int? totalCreditHours,
     double? overallProgress,
+    String? profilePictureUrl,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -119,26 +138,28 @@ class UserModel extends Equatable {
       remainingCreditHours: remainingCreditHours ?? this.remainingCreditHours,
       totalCreditHours: totalCreditHours ?? this.totalCreditHours,
       overallProgress: overallProgress ?? this.overallProgress,
+      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
     );
   }
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        nameAr,
-        nameEn,
-        email,
-        phone,
-        studentId,
-        major,
-        year,
-        gpa,
-        completedCreditHours,
-        remainingCreditHours,
-        totalCreditHours,
-        overallProgress,
-      ];
+    id,
+    name,
+    nameAr,
+    nameEn,
+    email,
+    phone,
+    studentId,
+    major,
+    year,
+    gpa,
+    completedCreditHours,
+    remainingCreditHours,
+    totalCreditHours,
+    overallProgress,
+    profilePictureUrl,
+  ];
 
   String getLocalizedName(String langCode) {
     if (langCode == 'ar') {

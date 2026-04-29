@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/bloc/auth_cubit.dart';
 import '../../../../core/bloc/settings_cubit.dart';
 import '../../../../core/bloc/student_cubit.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/profile_avatar.dart';
+import '../../../../core/utils/media_picker_helper.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/pages/login_screen.dart';
 import 'edit_profile_screen.dart';
@@ -60,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         double gpa = 0.0;
         int completedHours = 0;
         int remainingHours = 0;
-        int totalHours = 0;
+        String? profilePictureUrl;
 
         if (state is StudentLoaded) {
           final user = state.user;
@@ -74,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           gpa = user.gpa ?? 0.0;
           completedHours = user.completedCreditHours ?? 0;
           remainingHours = user.remainingCreditHours ?? 0;
-          // totalHours calculation removed as it was unused
+          profilePictureUrl = user.profilePictureUrl;
         } else if (state is StudentLoading && state.previousUser != null) {
           final user = state.previousUser!;
           final langCode = Localizations.localeOf(context).languageCode;
@@ -87,6 +92,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           gpa = user.gpa ?? 0.0;
           completedHours = user.completedCreditHours ?? 0;
           remainingHours = user.remainingCreditHours ?? 0;
+          profilePictureUrl = user.profilePictureUrl;
+        } else if (state is StudentImageUploading && state.previousUser != null) {
+          final user = state.previousUser!;
+          final langCode = Localizations.localeOf(context).languageCode;
+          studentName = user.getLocalizedName(langCode);
+          studentId = user.studentId ?? '';
+          studentEmail = user.email;
+          studentMajor = user.major ?? '';
+          studentYear = user.year ?? '';
+          studentPhone = user.phone ?? '';
+          gpa = user.gpa ?? 0.0;
+          completedHours = user.completedCreditHours ?? 0;
+          remainingHours = user.remainingCreditHours ?? 0;
+          profilePictureUrl = user.profilePictureUrl;
         } else if (state is StudentError && state.previousUser != null) {
           final user = state.previousUser!;
           final langCode = Localizations.localeOf(context).languageCode;
@@ -99,6 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           gpa = user.gpa ?? 0.0;
           completedHours = user.completedCreditHours ?? 0;
           remainingHours = user.remainingCreditHours ?? 0;
+          profilePictureUrl = user.profilePictureUrl;
         }
 
         final initials = studentName.isNotEmpty && studentName != l10n.students
@@ -127,25 +147,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Center(
                     child: Column(
                       children: [
-                        Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 60,
-                              backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
-                              child: CircleAvatar(
-                                radius: 55,
-                                backgroundColor: theme.primaryColor,
-                                child: Text(
-                                  initials,
-                                  style: GoogleFonts.cairo(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        ProfileAvatar(
+                          imageUrl: profilePictureUrl,
+                          initials: initials,
+                          radius: 55,
+                          isLoading: state is StudentImageUploading,
+                          showEditButton: true,
+                          onEdit: () => _showImageSourceActionSheet(context),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -402,6 +410,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  void _showImageSourceActionSheet(BuildContext context) {
+    MediaPickerHelper.showImageSourceSheet(
+      context: context,
+      onImageSelected: (file) => _handlePickedImage(file),
+    );
+  }
+
+  Future<void> _handlePickedImage(File file) async {
+    final cubit = context.read<StudentCubit>();
+    final currentUser = switch (cubit.state) {
+      StudentLoaded(:final user) => user,
+      StudentLoading(:final previousUser) => previousUser,
+      StudentImageUploading(:final previousUser) => previousUser,
+      StudentError(:final previousUser) => previousUser,
+      _ => null,
+    };
+    
+    final currentImageUrl = currentUser?.profilePictureUrl?.trim();
+    if (currentImageUrl != null &&
+        currentImageUrl.isNotEmpty &&
+        !(currentImageUrl.startsWith('/') || currentImageUrl.startsWith('file:'))) {
+      // Evict old network image from cache
+      try {
+        final uri = Uri.tryParse(currentImageUrl);
+        if (uri != null) {
+          await NetworkImage(currentImageUrl).evict();
+        }
+      } catch (_) {}
+    }
+
+    // Immediately show preview
+    cubit.selectLocalProfileImage(file.path);
+
+    // Start upload in cubit
+    final lang = Localizations.localeOf(context).languageCode;
+    await cubit.uploadProfileImage(file: file, lang: lang);
   }
 
   Widget _buildSummaryCard(BuildContext context, String value, String label, IconData icon, bool isDark) {

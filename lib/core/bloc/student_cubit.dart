@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../models/user_model.dart';
@@ -17,6 +19,14 @@ class StudentInitial extends StudentState {}
 class StudentLoading extends StudentState {
   final UserModel? previousUser;
   const StudentLoading({this.previousUser});
+
+  @override
+  List<Object?> get props => [previousUser];
+}
+
+class StudentImageUploading extends StudentState {
+  final UserModel? previousUser;
+  const StudentImageUploading({this.previousUser});
 
   @override
   List<Object?> get props => [previousUser];
@@ -137,6 +147,42 @@ class StudentCubit extends Cubit<StudentState> {
       emit(StudentError(e.message, previousUser: currentUser));
     } catch (e) {
       emit(StudentError('Failed to update profile: ${e.toString()}', previousUser: currentUser));
+    }
+  }
+
+  UserModel? get _currentUser {
+    final currentState = state;
+    if (currentState is StudentLoaded) return currentState.user;
+    if (currentState is StudentLoading) return currentState.previousUser;
+    if (currentState is StudentImageUploading) return currentState.previousUser;
+    if (currentState is StudentError) return currentState.previousUser;
+    return null;
+  }
+
+  /// Select a local image to preview immediately in the UI. The preview stays
+  /// in Cubit state only; it is not cached as backend data unless upload works.
+  void selectLocalProfileImage(String localPath) {
+    final currentUser = _currentUser;
+    if (currentUser != null) {
+      final updated = currentUser.copyWith(profilePictureUrl: localPath);
+      emit(StudentLoaded(updated));
+    }
+  }
+
+  /// Upload profile image file to backend. Emits uploading state, then loaded
+  /// (on success/fallback) or error.
+  Future<void> uploadProfileImage({required File file, String lang = 'en'}) async {
+    final currentUser = _currentUser;
+    emit(StudentImageUploading(previousUser: currentUser));
+    try {
+      final updated = await _studentRepository.uploadProfileImage(file: file, lang: lang);
+      emit(StudentLoaded(updated));
+      await loadProfile(lang: lang);
+      await loadDashboard(lang: lang);
+    } on ApiException catch (e) {
+      emit(StudentError(e.message, previousUser: currentUser));
+    } catch (e) {
+      emit(StudentError('Failed to upload image: ${e.toString()}', previousUser: currentUser));
     }
   }
 }

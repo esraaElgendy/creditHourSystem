@@ -4,7 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/bloc/student_cubit.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/profile_avatar.dart';
+import '../../../../core/utils/media_picker_helper.dart';
 import '../../../../l10n/app_localizations.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -98,6 +102,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
       builder: (context, state) {
         final isLoading = state is StudentLoading;
+        
+        // Get user data for avatar
+        UserModel? user;
+        if (state is StudentLoaded) user = state.user;
+        else if (state is StudentLoading) user = state.previousUser;
+        else if (state is StudentImageUploading) user = state.previousUser;
+        else if (state is StudentError) user = state.previousUser;
+
+        final langCode = Localizations.localeOf(context).languageCode;
+        final studentName = user?.getLocalizedName(langCode) ?? _nameController.text;
+        final initials = studentName.isNotEmpty
+            ? studentName.split(' ').where((e) => e.isNotEmpty).map((e) => e[0]).take(2).join().toUpperCase()
+            : 'ST';
 
         return Scaffold(
           appBar: AppBar(
@@ -115,24 +132,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     // Avatar
                     const SizedBox(height: 20),
-                    Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: theme.primaryColor,
-                          child: _getAvatarChild(state, context),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: theme.primaryColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: theme.scaffoldBackgroundColor, width: 2),
-                          ),
-                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
-                        ),
-                      ],
+                    ProfileAvatar(
+                      imageUrl: user?.profilePictureUrl,
+                      initials: initials,
+                      radius: 50,
+                      isLoading: state is StudentImageUploading,
+                      showEditButton: true,
+                      onEdit: () => _showImageSourceActionSheet(context),
                     ),
                     const SizedBox(height: 30),
 
@@ -268,28 +274,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _getAvatarChild(StudentState state, BuildContext context) {
-    UserModel? user;
-    if (state is StudentLoaded) {
-      user = state.user;
-    } else if (state is StudentLoading) {
-      user = state.previousUser;
-    } else if (state is StudentError) {
-      user = state.previousUser;
-    }
+  void _showImageSourceActionSheet(BuildContext context) {
+    MediaPickerHelper.showImageSourceSheet(
+      context: context,
+      onImageSelected: (file) => _handlePickedImage(file),
+    );
+  }
 
-    if (user != null) {
-      return Text(
-        user.getLocalizedName(Localizations.localeOf(context).languageCode)
-            .split(' ')
-            .where((e) => e.isNotEmpty)
-            .map((e) => e[0])
-            .take(2)
-            .join()
-            .toUpperCase(),
-        style: GoogleFonts.cairo(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
-      );
-    }
-    return const Icon(Icons.person, size: 50, color: Colors.white);
+  Future<void> _handlePickedImage(File file) async {
+    final cubit = context.read<StudentCubit>();
+    // Preview immediately
+    cubit.selectLocalProfileImage(file.path);
+    // Upload
+    final lang = Localizations.localeOf(context).languageCode;
+    await cubit.uploadProfileImage(file: file, lang: lang);
   }
 }

@@ -66,5 +66,8 @@
   "noLectures": "No lectures for this day",
   "level": "Level",
   "semester": "Semester",
-  "creditHours": "Credit Hours"
+  "creditHours": "Credit Hours",
+  "gallery": "Gallery",
+  "camera": "Camera",
+  "selectImage": "Select Image"
 }

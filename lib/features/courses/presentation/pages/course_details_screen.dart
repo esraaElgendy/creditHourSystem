@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
-//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/models/course_model.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/app_constants.dart';
 import '../../../../l10n/app_localizations.dart';
 
 class CourseDetailsScreen extends StatefulWidget {
-  final Map<String, dynamic> course;
+  final Map<String, dynamic>? course;
+  final CourseModel? courseModel;
 
-  const CourseDetailsScreen({
-    super.key,
-    this.course = AppConstants.courseDetailsMath2, // Default mock for now
-  });
+  const CourseDetailsScreen({super.key, this.course, this.courseModel})
+    : assert(
+        course != null || courseModel != null,
+        'Either course or courseModel must be provided',
+      );
 
   @override
   State<CourseDetailsScreen> createState() => _CourseDetailsScreenState();
@@ -24,7 +27,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    isRegistered = widget.course['isRegistered'] ?? false;
+    if (widget.course != null) {
+      isRegistered = widget.course!['isRegistered'] ?? false;
+    }
   }
 
   @override
@@ -32,8 +37,140 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final course = widget.course;
     final langCode = Localizations.localeOf(context).languageCode;
+
+    // Use CourseModel if provided, otherwise use mock data
+    if (widget.courseModel != null) {
+      return _buildCourseModelUI(
+        context,
+        widget.courseModel!,
+        l10n,
+        theme,
+        isDark,
+        langCode,
+      );
+    } else {
+      return _buildMockCourseUI(
+        context,
+        widget.course ?? AppConstants.courseDetailsMath2,
+        l10n,
+        theme,
+        isDark,
+        langCode,
+      );
+    }
+  }
+
+  Widget _buildCourseModelUI(
+    BuildContext context,
+    CourseModel courseModel,
+    AppLocalizations l10n,
+    ThemeData theme,
+    bool isDark,
+    String langCode,
+  ) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: BackButton(color: isDark ? Colors.white : Colors.black),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      courseModel.localizedName(langCode),
+                      style: AppTypography.headingM.copyWith(
+                        color: AppColors.primary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTypography.spacingM,
+                      vertical: AppTypography.spacingXS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(
+                        AppTypography.radiusM,
+                      ),
+                    ),
+                    child: Text(
+                      courseModel.courseID,
+                      style: AppTypography.badgeL.copyWith(color: Colors.white),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+              _buildInfoRow(
+                Icons.hourglass_bottom,
+                l10n.creditHoursLabel(courseModel.creditHours),
+                isDark,
+              ),
+              const SizedBox(height: 40),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isRegistered
+                        ? (isDark
+                              ? AppColors.inputFillDark
+                              : const Color(0xffDBDEFF))
+                        : AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      isRegistered = !isRegistered;
+                    });
+                  },
+                  child: Text(
+                    isRegistered ? l10n.drop : l10n.register,
+                    style: GoogleFonts.cairo(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isRegistered
+                          ? (isDark ? Colors.white : AppColors.primary)
+                          : Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMockCourseUI(
+    BuildContext context,
+    Map<String, dynamic> course,
+    AppLocalizations l10n,
+    ThemeData theme,
+    bool isDark,
+    String langCode,
+  ) {
     final localizedName = _localizedCourseField(
       course,
       langCode,
@@ -55,33 +192,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         'name_ar',
       ],
     );
-    final localizedSubject = _localizedCourseField(
-      course,
-      langCode,
-      fallbackKey: 'subject',
-      enKeys: const [
-        'subjectEn',
-        'subjectEN',
-        'englishSubject',
-        'subjectNameEn',
-        'subjectNameEN',
-        'courseSubjectEn',
-        'courseSubjectEN',
-        'subject_en',
-      ],
-      arKeys: const [
-        'subjectAr',
-        'subjectAR',
-        'arabicSubject',
-        'subjectNameAr',
-        'subjectNameAR',
-        'courseSubjectAr',
-        'courseSubjectAR',
-        'subject_ar',
-      ],
-    );
 
-    // Derived values from mock
     final isFull = (course['enrolled'] ?? 0) >= (course['capacity'] ?? 0);
     final hasConflict = course['hasConflict'] ?? false;
 
@@ -93,170 +204,153 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  localizedName.isNotEmpty
-                      ? localizedName
-                      : course['name'] ?? "Course Name",
-                  style: GoogleFonts.cairo(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      localizedName.isNotEmpty
+                          ? localizedName
+                          : course['name'] ?? "Course Name",
+                      style: AppTypography.headingM.copyWith(
+                        color: AppColors.primary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTypography.spacingM,
+                      vertical: AppTypography.spacingXS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(
+                        AppTypography.radiusM,
+                      ),
+                    ),
+                    child: Text(
+                      course['code'] ?? "CODE",
+                      style: AppTypography.badgeL.copyWith(color: Colors.white),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(12),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(course['instructors'] ?? "", style: AppTypography.bodyM),
+              const SizedBox(height: 30),
+              _buildInfoRow(
+                Icons.access_time,
+                l10n.creditHoursLabel(course['creditHours'] ?? 3),
+                isDark,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                course['time'] ?? "",
+                style: GoogleFonts.cairo(fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Text(
+                    l10n.prerequisites + " : ",
+                    style: GoogleFonts.cairo(fontSize: 16),
                   ),
-                  child: Text(
-                    course['code'] ?? "CODE",
-                    style: const TextStyle(
-                      color: Colors.white,
+                  Text(
+                    course['prerequisite'] ?? "",
+                    style: GoogleFonts.cairo(
+                      fontSize: 16,
+                      color: Colors.blue,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (localizedSubject.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  localizedSubject,
-                  style: GoogleFonts.cairo(
-                    fontSize: 16,
+                ],
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    size: 28,
                     color: isDark ? Colors.grey[400] : Colors.grey[700],
                   ),
-                ),
-              ),
-            Text(
-              course['instructors'] ?? "",
-              style: GoogleFonts.cairo(fontSize: 16),
-            ),
-
-            const SizedBox(height: 30),
-
-            _buildInfoRow(
-              Icons.access_time,
-              l10n.creditHoursLabel(course['creditHours'] ?? 3),
-              isDark,
-            ),
-            const SizedBox(height: 16),
-
-            Text(course['time'] ?? "", style: GoogleFonts.cairo(fontSize: 16)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Text(
-                  l10n.prerequisites + " : ",
-                  style: GoogleFonts.cairo(fontSize: 16),
-                ),
-                Text(
-                  course['prerequisite'] ?? "",
-                  style: GoogleFonts.cairo(
-                    fontSize: 16,
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            Row(
-              children: [
-                Icon(
-                  Icons.person_outline,
-                  size: 28,
-                  color: isDark ? Colors.grey[400] : Colors.grey[700],
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "${course['enrolled']}/${course['capacity']}",
-                  style: GoogleFonts.cairo(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 40),
-
-            // Warnings
-            if (isFull && !isRegistered) _buildWarning(l10n.courseFull),
-            if (hasConflict && !isRegistered)
-              _buildWarning(l10n.courseConflict),
-
-            // Registration Status
-            if (isRegistered)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle_outline, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Text(
-                      l10n.registered,
-                      style: GoogleFonts.cairo(
-                        fontSize: 18,
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${course['enrolled']}/${course['capacity']}",
+                    style: GoogleFonts.cairo(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
-                ),
-              ),
-
-            const Spacer(),
-
-            // Action Button
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isRegistered
-                      ? (isDark
-                            ? AppColors.inputFillDark
-                            : const Color(0xffDBDEFF))
-                      : AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  setState(() {
-                    isRegistered = !isRegistered;
-                  });
-                },
-                child: Text(
-                  isRegistered ? l10n.drop : l10n.register,
-                  style: GoogleFonts.cairo(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: isRegistered
-                        ? (isDark ? Colors.white : AppColors.primary)
-                        : Colors.white,
+                ],
+              ),
+              const SizedBox(height: 40),
+              if (isFull && !isRegistered) _buildWarning(l10n.courseFull),
+              if (hasConflict && !isRegistered)
+                _buildWarning(l10n.courseConflict),
+              if (isRegistered)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.registered,
+                        style: GoogleFonts.cairo(
+                          fontSize: 18,
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isRegistered
+                        ? (isDark
+                              ? AppColors.inputFillDark
+                              : const Color(0xffDBDEFF))
+                        : AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      isRegistered = !isRegistered;
+                    });
+                  },
+                  child: Text(
+                    isRegistered ? l10n.drop : l10n.register,
+                    style: GoogleFonts.cairo(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isRegistered
+                          ? (isDark ? Colors.white : AppColors.primary)
+                          : Colors.white,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 30),
-          ],
+              const SizedBox(height: 30),
+            ],
+          ),
         ),
       ),
     );
@@ -307,13 +401,23 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   }
 
   Widget _buildWarning(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: Colors.red),
-          const SizedBox(width: 8),
-          Text(text, style: GoogleFonts.cairo(color: Colors.red, fontSize: 16)),
+          const Icon(Icons.warning, color: Colors.red, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.cairo(fontSize: 14, color: Colors.red),
+            ),
+          ),
         ],
       ),
     );

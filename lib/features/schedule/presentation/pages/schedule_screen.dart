@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../l10n/app_localizations.dart';
 
 class ScheduleScreen extends StatelessWidget {
@@ -91,12 +91,12 @@ class ScheduleScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppTypography.spacingM,
+                ),
                 child: Text(
                   day,
-                  style: GoogleFonts.cairo(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  style: AppTypography.subheadingL.copyWith(
                     color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
@@ -156,31 +156,25 @@ class ScheduleScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   lecture['name'],
-                  style: GoogleFonts.cairo(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xff2A31FA), // Blue text
+                  style: AppTypography.subheadingM.copyWith(
+                    color: const Color(0xff2A31FA),
                   ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
+                  horizontal: AppTypography.spacingM,
+                  vertical: AppTypography.spacingXS,
                 ),
                 decoration: BoxDecoration(
                   color: lecture['type'] == 'LECTURE'
                       ? const Color(0xff6C72FF)
                       : const Color(0xff4D5596),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppTypography.radiusXL),
                 ),
                 child: Text(
                   lecture['type'],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTypography.badgeM.copyWith(color: Colors.white),
                 ),
               ),
             ],
@@ -203,12 +197,11 @@ class ScheduleScreen extends StatelessWidget {
   Widget _buildInfoRow(IconData icon, String text, bool isDark) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: const Color(0xff2A31FA)), // Blue icons
-        const SizedBox(width: 8),
+        Icon(icon, size: 20, color: const Color(0xff2A31FA)),
+        const SizedBox(width: AppTypography.spacingXS),
         Text(
           text,
-          style: GoogleFonts.cairo(
-            fontSize: 14,
+          style: AppTypography.bodyS.copyWith(
             color: isDark ? Colors.grey[300] : Colors.black87,
           ),
         ),
@@ -231,10 +224,7 @@ class ScheduleScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             l10n.noLectures,
-            style: GoogleFonts.cairo(
-              color: const Color(0xff9DA2FF),
-              fontSize: 16,
-            ),
+            style: AppTypography.bodyM.copyWith(color: const Color(0xff9DA2FF)),
           ),
         ],
       ),
