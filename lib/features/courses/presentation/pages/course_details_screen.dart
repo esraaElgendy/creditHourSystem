@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/app_constants.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -103,27 +103,22 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   localizedName.isNotEmpty
                       ? localizedName
                       : course['name'] ?? "Course Name",
-                  style: GoogleFonts.cairo(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                  style: AppTypography.headingM.copyWith(
                     color: AppColors.primary,
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: AppTypography.spacingM,
+                    vertical: AppTypography.spacingXS,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppTypography.radiusM),
                   ),
                   child: Text(
                     course['code'] ?? "CODE",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: AppTypography.badgeL.copyWith(color: Colors.white),
                   ),
                 ),
               ],
@@ -131,19 +126,15 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
             const SizedBox(height: 10),
             if (localizedSubject.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppTypography.spacingM),
                 child: Text(
                   localizedSubject,
-                  style: GoogleFonts.cairo(
-                    fontSize: 16,
+                  style: AppTypography.bodyM.copyWith(
                     color: isDark ? Colors.grey[400] : Colors.grey[700],
                   ),
                 ),
               ),
-            Text(
-              course['instructors'] ?? "",
-              style: GoogleFonts.cairo(fontSize: 16),
-            ),
+            Text(course['instructors'] ?? "", style: AppTypography.bodyM),
 
             const SizedBox(height: 30),
 

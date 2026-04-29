@@ -4,6 +4,7 @@ import '../../../../core/bloc/course_cubit.dart';
 import '../../../../core/bloc/settings_cubit.dart';
 import '../../../../core/models/course_model.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'course_details_screen.dart';
 
@@ -215,12 +216,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                       children: [
                                         Text(
                                           "${l10n.level} ${level.level}",
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          style: AppTypography.subheadingL
+                                              .copyWith(
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors.primaryDark,
+                                              ),
                                         ),
-                                        const SizedBox(height: 10),
+                                        const SizedBox(
+                                          height: AppTypography.spacingM,
+                                        ),
                                         ...level.semesters.map((semester) {
                                           return Column(
                                             crossAxisAlignment:
@@ -229,15 +234,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                               Padding(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      vertical: 8.0,
+                                                      vertical: AppTypography
+                                                          .spacingS,
                                                     ),
                                                 child: Text(
                                                   "${l10n.semester} ${semester.semester}",
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.grey,
-                                                  ),
+                                                  style:
+                                                      AppTypography.bodyMMuted(),
                                                 ),
                                               ),
                                               ...semester.courses.map(
@@ -281,16 +284,21 @@ class _CoursesScreenState extends State<CoursesScreen> {
     final langCode = Localizations.localeOf(context).languageCode;
     final subjectName = course.localizedSubject(langCode);
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppTypography.spacingM),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : const Color(0xffE0E4FF),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppTypography.radiusM),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppTypography.spacingL,
+          vertical: AppTypography.spacingS,
+        ),
         title: Text(
           course.localizedName(langCode),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: AppTypography.subheadingM.copyWith(
+            color: isDark ? Colors.white : AppColors.primaryDark,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,12 +306,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
             if (subjectName.isNotEmpty)
               Text(
                 subjectName,
-                style: TextStyle(
-                  fontSize: 13,
+                style: AppTypography.bodyS.copyWith(
                   color: isDark ? Colors.grey[400] : Colors.grey[700],
                 ),
               ),
-            if (subjectName.isNotEmpty) const SizedBox(height: 6),
+            if (subjectName.isNotEmpty)
+              const SizedBox(height: AppTypography.spacingXS),
             Row(
               children: [
                 Icon(
@@ -311,10 +319,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   size: 16,
                   color: isDark ? Colors.grey[400] : Colors.grey,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppTypography.spacingXS),
                 Text(
                   "${course.creditHours} ${l10n.creditHours}",
-                  style: TextStyle(color: isDark ? Colors.grey[400] : null),
+                  style: AppTypography.captionM.copyWith(
+                    color: isDark ? Colors.grey[400] : null,
+                  ),
                 ),
               ],
             ),
