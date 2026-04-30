@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/bloc/grades_cubit.dart';
+import '../../../../core/models/grades_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../l10n/app_localizations.dart';
 
-class GradesScreen extends StatelessWidget {
+class GradesScreen extends StatefulWidget {
   const GradesScreen({super.key});
+
+  @override
+  State<GradesScreen> createState() => _GradesScreenState();
+}
+
+class _GradesScreenState extends State<GradesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchGrades();
+    });
+  }
+
+  void _fetchGrades() {
+    final lang = Localizations.localeOf(context).languageCode;
+    context.read<GradesCubit>().fetchGrades(lang: lang);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,59 +33,54 @@ class GradesScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final List<Map<String, String>> grades = [
-      {
-        "name": "Mechanics 1",
-        "grade": "A-",
-        "score": "3.7",
-        "code": "4",
-        "numeric": "91",
-        "percentage": "91%",
-        "semester": "1",
-      },
-      {
-        "name": "CS Intro",
-        "grade": "A",
-        "score": "4",
-        "code": "5",
-        "numeric": "98",
-        "percentage": "98%",
-        "semester": "1",
-      },
-      {
-        "name": "History",
-        "grade": "B",
-        "score": "3",
-        "code": "6",
-        "numeric": "82",
-        "percentage": "82%",
-        "semester": "1",
-      },
-    ];
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTypography.spacingL,
-                vertical: AppTypography.spacingXL,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-                  const SizedBox(height: AppTypography.spacing3XL),
-                  _buildPerformanceCard(isDark, grades),
-                  const SizedBox(height: AppTypography.spacing3XL),
-                  _buildSubjectGradesHeader(l10n),
-                  const SizedBox(height: AppTypography.spacingL),
-                  _buildGradesList(grades, isDark, l10n),
-                ],
-              ),
+            child: BlocBuilder<GradesCubit, GradesState>(
+              builder: (context, state) {
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    _fetchGrades();
+                  },
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTypography.spacingL,
+                          vertical: AppTypography.spacingXL,
+                        ),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate([
+                            _buildHeader(context),
+                            const SizedBox(height: AppTypography.spacing3XL),
+                            if (state is GradesLoading)
+                              const Center(child: CircularProgressIndicator())
+                            else if (state is GradesError)
+                              _buildErrorState(state.message, l10n)
+                            else if (state is GradesLoaded) ...[
+                              _buildPerformanceCard(isDark, state.summary),
+                              const SizedBox(height: AppTypography.spacing3XL),
+                              _buildSubjectGradesHeader(l10n),
+                              const SizedBox(height: AppTypography.spacingL),
+                              if (state.summary.semesterGrades.isEmpty)
+                                _buildEmptyState(context)
+                              else
+                                _buildTermsList(
+                                  state.summary.semesterGrades,
+                                  isDark,
+                                  l10n,
+                                ),
+                            ],
+                          ]),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -98,7 +114,7 @@ class GradesScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'My Grades',
+                AppLocalizations.of(context)!.myGrades,
                 style: AppTypography.headingM.copyWith(
                   color: AppColors.primaryDark,
                 ),
@@ -108,26 +124,39 @@ class GradesScreen extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: AppColors.cardLight,
-            borderRadius: BorderRadius.circular(AppTypography.radiusM),
-          ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: AppColors.primary,
-            ),
-            onPressed: () {},
-          ),
-        ),
       ],
     );
   }
 
-  Widget _buildPerformanceCard(bool isDark, List<Map<String, String>> grades) {
+  Widget _buildErrorState(String message, AppLocalizations l10n) {
+    return Center(
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          Text(message, style: const TextStyle(color: Colors.red)),
+          const SizedBox(height: 16),
+          ElevatedButton(onPressed: _fetchGrades, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40.0),
+        child: Text(
+          Localizations.localeOf(context).languageCode == 'ar' 
+              ? 'لا توجد درجات متاحة' 
+              : 'No grades available',
+          style: AppTypography.bodyMSubtle(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPerformanceCard(bool isDark, GradesSummaryModel summary) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppTypography.spacingXL),
@@ -136,7 +165,7 @@ class GradesScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTypography.radius3XL),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -167,7 +196,7 @@ class GradesScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppTypography.radiusXL),
                 ),
                 child: Text(
-                  'ACTIVE',
+                  'SUMMARY',
                   style: AppTypography.badgeL.copyWith(color: Colors.white),
                 ),
               ),
@@ -179,7 +208,7 @@ class GradesScreen extends StatelessWidget {
               Expanded(
                 child: _performanceStat(
                   label: 'GPA',
-                  value: '3.7',
+                  value: summary.gpa.toStringAsFixed(2),
                   isDark: isDark,
                 ),
               ),
@@ -187,8 +216,21 @@ class GradesScreen extends StatelessWidget {
               Expanded(
                 child: _performanceStat(
                   label: 'Overall',
-                  value: 'A',
-                  subLabel: '(امتياز)',
+                  value: summary.overallLetter.isNotEmpty
+                      ? summary.overallLetter
+                      : '-',
+                  isDark: isDark,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTypography.spacingM),
+          Row(
+            children: [
+              Expanded(
+                child: _performanceStat(
+                  label: 'Score',
+                  value: '${summary.totalPercentage.toStringAsFixed(1)}%',
                   isDark: isDark,
                 ),
               ),
@@ -196,38 +238,13 @@ class GradesScreen extends StatelessWidget {
               Expanded(
                 child: _performanceStat(
                   label: 'Points',
-                  value: '11.1',
+                  value: summary.totalGradePoints.toStringAsFixed(1),
                   isDark: isDark,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppTypography.spacingXXL),
-          _buildProgressBar(),
-          const SizedBox(height: AppTypography.spacingM),
-          Text('Level 1 - Semester 1', style: AppTypography.bodyMSubtle()),
-          const SizedBox(height: AppTypography.spacingXS),
-          Text(
-            '${grades.length} subjects • Average ${grades.map((grade) => int.tryParse(grade['numeric'] ?? '0') ?? 0).fold<int>(0, (sum, value) => sum + value) ~/ grades.length}%',
-            style: AppTypography.bodyMSubtle(),
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildProgressBar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppTypography.radiusM),
-      child: Container(
-        height: 12,
-        color: AppColors.cardLight,
-        child: Row(
-          children: [
-            Expanded(flex: 73, child: Container(color: AppColors.primary)),
-            Expanded(flex: 27, child: Container(color: Colors.transparent)),
-          ],
-        ),
       ),
     );
   }
@@ -273,49 +290,86 @@ class GradesScreen extends StatelessWidget {
   }
 
   Widget _buildSubjectGradesHeader(AppLocalizations l10n) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Subject Grades',
-          style: AppTypography.headingS.copyWith(color: AppColors.primaryDark),
-        ),
-        Text(l10n.myGrades, style: AppTypography.subheadingMPrimary()),
-      ],
+    return Text(
+      'Subject Grades',
+      style: AppTypography.headingS.copyWith(color: AppColors.primaryDark),
     );
   }
 
-  Widget _buildGradesList(
-    List<Map<String, String>> grades,
+  Widget _buildTermsList(
+    List<SemesterGradesModel> semesters,
     bool isDark,
     AppLocalizations l10n,
   ) {
     return Column(
-      children: grades.map((grade) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppTypography.spacingM),
-          child: _buildGradeCard(grade, isDark, l10n),
+      children: semesters.map((semester) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppTypography.spacingL),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            borderRadius: BorderRadius.circular(AppTypography.radius2XL),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: true,
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 8,
+              ),
+              title: Text(
+                semester.term,
+                style: AppTypography.subheadingL.copyWith(
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                  ),
+                  child: Column(
+                    children: semester.courses.map((course) {
+                      return _buildCourseGradeCard(course, isDark, l10n);
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       }).toList(),
     );
   }
 
-  Widget _buildGradeCard(
-    Map<String, String> grade,
+  Widget _buildCourseGradeCard(
+    CourseGradeModel course,
     bool isDark,
     AppLocalizations l10n,
   ) {
-    final gradeColor = _getGradeColor(grade['grade']!);
+    final gradeColor = _getGradeColor(course.letterGrade);
+
     return Container(
-      padding: const EdgeInsets.all(AppTypography.spacingL),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(AppTypography.radius2XL),
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -323,74 +377,92 @@ class GradesScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 62,
-            height: 62,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              color: gradeColor.withOpacity(0.18),
+              color: gradeColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: Text(
-              grade['grade']!,
-              style: AppTypography.statisticL.copyWith(color: gradeColor),
+              course.letterGrade,
+              style: AppTypography.headingS.copyWith(color: gradeColor),
             ),
           ),
-          const SizedBox(width: AppTypography.spacingL),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  grade['name']!,
+                  course.courseName,
                   style: AppTypography.subheadingL.copyWith(
                     color: isDark ? Colors.white : AppColors.primaryDark,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: AppTypography.spacingM),
-                _gradeDetailRow('Course Code', grade['code'] ?? '--'),
-                const SizedBox(height: AppTypography.spacingXS),
-                _gradeDetailRow('Numeric Grade', grade['numeric'] ?? '–'),
-                const SizedBox(height: AppTypography.spacingXS),
-                _gradeDetailRow('${l10n.semester}', grade['semester'] ?? '1'),
+                const SizedBox(height: 8),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildInfoChip(
+                      course.courseID,
+                      isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                      isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                    ),
+                    if (course.status.isNotEmpty)
+                      _buildInfoChip(
+                        course.status,
+                        isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
+                        isDark ? const Color(0xFFFDE68A) : const Color(0xFFD97706),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildInfoChip(
+                      'Sem ${course.semester}',
+                      isDark ? const Color(0xFF134E4A) : const Color(0xFFF0FDFA),
+                      isDark ? const Color(0xFF5EEAD4) : const Color(0xFF0F766E),
+                    ),
+                    _buildInfoChip(
+                      course.academicYear,
+                      isDark ? const Color(0xFF312E81) : const Color(0xFFEEF2FF),
+                      isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4338CA),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          const SizedBox(width: AppTypography.spacingM),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                constraints: const BoxConstraints(minWidth: 72),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTypography.spacingM,
-                  vertical: AppTypography.spacingXS,
-                ),
-                decoration: BoxDecoration(
-                  color: gradeColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(AppTypography.radiusL),
-                ),
-                child: Text(
-                  grade['percentage'] ?? '--',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.buttonM.copyWith(color: gradeColor),
+              Text(
+                '${course.numericGrade}',
+                style: AppTypography.headingM.copyWith(
+                  color: gradeColor,
                 ),
               ),
-              const SizedBox(height: AppTypography.spacingM),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTypography.spacingM,
-                  vertical: AppTypography.spacingXS,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.cardLight,
-                  borderRadius: BorderRadius.circular(AppTypography.radiusL),
-                ),
-                child: Text(
-                  '${grade['score'] ?? ''} cr',
-                  style: AppTypography.buttonS.copyWith(
-                    color: AppColors.primaryDark,
-                  ),
-                ),
+              const SizedBox(height: 6),
+              _buildInfoChip(
+                '${course.percentage}%',
+                gradeColor.withValues(alpha: 0.15),
+                gradeColor,
+              ),
+              const SizedBox(height: 6),
+              _buildInfoChip(
+                '${course.gradePoints} pts',
+                isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               ),
             ],
           ),
@@ -399,14 +471,28 @@ class GradesScreen extends StatelessWidget {
     );
   }
 
-  Widget _gradeDetailRow(String label, String value) {
-    return Text('$label • $value', style: AppTypography.bodySMuted());
+  Widget _buildInfoChip(String text, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: AppTypography.captionM.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 
   Color _getGradeColor(String grade) {
-    if (grade.startsWith("A")) return AppColors.gradeA;
-    if (grade.startsWith("B")) return AppColors.gradeB;
-    if (grade.startsWith("C")) return AppColors.gradeC;
-    return AppColors.gradeF;
+    if (grade.startsWith("A")) return const Color(0xFF10B981); // Green
+    if (grade.startsWith("B")) return const Color(0xFF3B82F6); // Blue
+    if (grade.startsWith("C")) return const Color(0xFFF59E0B); // Amber
+    if (grade.startsWith("D")) return const Color(0xFFF97316); // Orange
+    return const Color(0xFFEF4444); // Red/F
   }
 }

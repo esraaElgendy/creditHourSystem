@@ -14,7 +14,9 @@ import 'l10n/app_localizations.dart';
 
 import 'core/bloc/course_registration_cubit.dart';
 import 'core/bloc/schedule_cubit.dart';
+import 'core/bloc/grades_cubit.dart';
 import 'core/repositories/course_repository.dart';
+import 'core/repositories/grades_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +32,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final courseRepository = CourseRepository();
+    final gradesRepository = GradesRepository();
 
     return MultiBlocProvider(
       providers: [
@@ -53,6 +56,9 @@ class MyApp extends StatelessWidget {
             repository: courseRepository,
             prefs: appPreferences,
           ),
+        ),
+        BlocProvider(
+          create: (context) => GradesCubit(repository: gradesRepository),
         ),
       ],
       child: BlocBuilder<SettingsCubit, SettingsState>(
