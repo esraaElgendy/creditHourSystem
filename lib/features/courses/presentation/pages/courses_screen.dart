@@ -358,85 +358,71 @@ class _CoursesScreenState extends State<CoursesScreen> {
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header: Course Code and Course Name
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              childrenPadding: const EdgeInsets.only(
+                left: 16,
+                right: 16,
+                bottom: 16,
+              ),
+              iconColor: isDark ? Colors.white : AppColors.primaryDark,
+              collapsedIconColor: isDark
+                  ? Colors.grey[400]
+                  : AppColors.textGrey600,
+              title: Text(
+                course.localizedName(langCode),
+                style: AppTypography.subheadingM.copyWith(
+                  color: isDark ? Colors.white : AppColors.primaryDark,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 10.0),
+                child: Row(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Course Name and Code in one line
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  course.localizedName(langCode),
-                                  style: AppTypography.subheadingM.copyWith(
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppColors.primaryDark,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: borderColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  course.courseID,
-                                  style: AppTypography.captionM.copyWith(
-                                    color: borderColor,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Credits
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.school,
-                                size: 14,
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : AppColors.textGrey600,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${course.creditHours} ${l10n.creditHours}',
-                                style: AppTypography.captionM.copyWith(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : AppColors.textGrey600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: borderColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        course.courseID,
+                        style: AppTypography.captionM.copyWith(
+                          color: borderColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.school,
+                      size: 14,
+                      color: isDark ? Colors.grey[400] : AppColors.textGrey600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${course.creditHours} ${l10n.creditHours}',
+                      style: AppTypography.captionM.copyWith(
+                        color: isDark
+                            ? Colors.grey[400]
+                            : AppColors.textGrey600,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-
-                // Status and Action Area
+              ),
+              children: [
                 if (isLoading)
                   _buildLoadingState(isDark, l10n)
                 else if (isRegistered)
