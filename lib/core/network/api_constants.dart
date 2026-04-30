@@ -16,6 +16,9 @@ class ApiConstants {
   
   // Course Endpoints
   static const String allCourses = '/Courses/all';
+  static const String registerCourse = '/CoursesRegistration/register';
+  static const String dropCourse = '/CoursesRegistration/drop';
+  static const String mySchedule = '/Schedule/my-schedule';
   
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);

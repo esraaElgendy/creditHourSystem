@@ -12,17 +12,24 @@ import 'features/dashboard/presentation/pages/main_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'l10n/app_localizations.dart';
 
-void main() {
+import 'core/bloc/course_registration_cubit.dart';
+import 'core/bloc/schedule_cubit.dart';
+import 'core/repositories/course_repository.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  final appPreferences = AppPreferences();
+  await appPreferences.init();
+  runApp(MyApp(appPreferences: appPreferences));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AppPreferences appPreferences;
+  const MyApp({super.key, required this.appPreferences});
 
   @override
   Widget build(BuildContext context) {
-    final appPreferences = AppPreferences();
+    final courseRepository = CourseRepository();
 
     return MultiBlocProvider(
       providers: [
@@ -36,7 +43,16 @@ class MyApp extends StatelessWidget {
           create: (context) => StudentCubit(),
         ),
         BlocProvider(
-          create: (context) => CourseCubit(),
+          create: (context) => CourseCubit(courseRepository: courseRepository),
+        ),
+        BlocProvider(
+          create: (context) => ScheduleCubit(repository: courseRepository),
+        ),
+        BlocProvider(
+          create: (context) => CourseRegistrationCubit(
+            repository: courseRepository,
+            prefs: appPreferences,
+          ),
         ),
       ],
       child: BlocBuilder<SettingsCubit, SettingsState>(

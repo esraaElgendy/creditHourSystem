@@ -1,4 +1,5 @@
 import '../models/course_model.dart';
+import '../models/schedule_model.dart';
 import '../network/api_client.dart';
 import '../network/api_constants.dart';
 
@@ -58,6 +59,56 @@ class CourseRepository {
         rethrow;
       }
       throw Exception('Error fetching courses: ${e.toString()}');
+    }
+  }
+
+  /// Register a course for the current student
+  Future<bool> registerCourse({required String courseID, required String lang}) async {
+    try {
+      final encodedID = Uri.encodeComponent(courseID);
+      final response = await _apiClient.post(
+        '${ApiConstants.registerCourse}/$encodedID?lang=$lang',
+        body: {},
+        requiresAuth: true,
+      );
+      if (response['success'] == true) return true;
+      throw Exception(response['message'] ?? 'Failed to register course');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Drop a registered course
+  Future<bool> dropCourse({required String courseID, required String lang}) async {
+    try {
+      final encodedID = Uri.encodeComponent(courseID);
+      final response = await _apiClient.delete(
+        '${ApiConstants.dropCourse}/$encodedID?lang=$lang',
+        requiresAuth: true,
+      );
+      if (response['success'] == true) return true;
+      throw Exception(response['message'] ?? 'Failed to drop course');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Get student schedule from API
+  Future<List<ScheduleModel>> getMySchedule({required String lang}) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiConstants.mySchedule}?lang=$lang',
+        requiresAuth: true,
+      );
+
+      if (response['success'] == true) {
+        final List data = response['data'] ?? [];
+        return data.map((json) => ScheduleModel.fromJson(json)).toList();
+      } else {
+        throw Exception(response['message'] ?? 'Failed to load schedule');
+      }
+    } catch (e) {
+      rethrow;
     }
   }
 }

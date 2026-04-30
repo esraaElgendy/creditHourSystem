@@ -1,61 +1,76 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppPreferences {
+  static final AppPreferences _instance = AppPreferences._internal();
+  factory AppPreferences() => _instance;
+  AppPreferences._internal();
+
   static const String _keyTheme = 'theme_mode';
   static const String _keyLocale = 'locale';
   static const String _keyToken = 'auth_token';
   static const String _keyUserData = 'user_data';
+  static const String _keyRegisteredCourses = 'registered_courses';
 
-  Future<void> saveThemeMode(bool isDark) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyTheme, isDark);
+  late SharedPreferences _prefs;
+  bool _isInitialized = false;
+
+  Future<void> init() async {
+    if (_isInitialized) return;
+    _prefs = await SharedPreferences.getInstance();
+    _isInitialized = true;
   }
 
-  Future<bool?> getThemeMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyTheme);
+  Future<void> saveThemeMode(bool isDark) async {
+    await _prefs.setBool(_keyTheme, isDark);
+  }
+
+  bool? getThemeMode() {
+    return _prefs.getBool(_keyTheme);
   }
 
   Future<void> saveLocale(String languageCode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyLocale, languageCode);
+    await _prefs.setString(_keyLocale, languageCode);
   }
 
-  Future<String?> getLocale() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyLocale);
+  String? getLocale() {
+    return _prefs.getString(_keyLocale);
   }
 
   // Token management
   Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, token);
+    await _prefs.setString(_keyToken, token);
   }
 
-  Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyToken);
+  String? getToken() {
+    return _prefs.getString(_keyToken);
   }
 
   Future<void> clearToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyToken);
-    await prefs.remove(_keyUserData);
+    await _prefs.remove(_keyToken);
+    await _prefs.remove(_keyUserData);
+    await _prefs.remove(_keyRegisteredCourses);
   }
 
-  Future<bool> isLoggedIn() async {
-    final token = await getToken();
+  bool isLoggedIn() {
+    final token = getToken();
     return token != null && token.isNotEmpty;
   }
 
   // User data caching
   Future<void> saveUserData(String userData) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserData, userData);
+    await _prefs.setString(_keyUserData, userData);
   }
 
-  Future<String?> getUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyUserData);
+  String? getUserData() {
+    return _prefs.getString(_keyUserData);
+  }
+
+  // Registered Courses Persistence
+  Future<void> setRegisteredCourses(List<String> courseIds) async {
+    await _prefs.setStringList(_keyRegisteredCourses, courseIds);
+  }
+
+  List<String> getRegisteredCourses() {
+    return _prefs.getStringList(_keyRegisteredCourses) ?? [];
   }
 }

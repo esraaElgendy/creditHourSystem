@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/bloc/course_registration_cubit.dart';
 import '../../../../core/models/course_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -22,14 +24,10 @@ class CourseDetailsScreen extends StatefulWidget {
 
 class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   // Mock state for interactivity
-  bool isRegistered = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.course != null) {
-      isRegistered = widget.course!['isRegistered'] ?? false;
-    }
   }
 
   @override
@@ -69,94 +67,136 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     bool isDark,
     String langCode,
   ) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: BackButton(color: isDark ? Colors.white : Colors.black),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      courseModel.localizedName(langCode),
-                      style: AppTypography.headingM.copyWith(
+    return BlocListener<CourseRegistrationCubit, CourseRegistrationState>(
+      listener: (context, state) {
+        if (state is CourseRegistrationUpdated &&
+            state.lastError != null &&
+            state.lastCourseId == courseModel.courseID) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.lastError!),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: BackButton(color: isDark ? Colors.white : Colors.black),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        courseModel.localizedName(langCode),
+                        style: AppTypography.headingM.copyWith(
+                          color: AppColors.primary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTypography.spacingM,
+                        vertical: AppTypography.spacingXS,
+                      ),
+                      decoration: BoxDecoration(
                         color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(
+                          AppTypography.radiusM,
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTypography.spacingM,
-                      vertical: AppTypography.spacingXS,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(
-                        AppTypography.radiusM,
+                      child: Text(
+                        courseModel.courseID,
+                        style: AppTypography.badgeL.copyWith(color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    child: Text(
-                      courseModel.courseID,
-                      style: AppTypography.badgeL.copyWith(color: Colors.white),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-              _buildInfoRow(
-                Icons.hourglass_bottom,
-                l10n.creditHoursLabel(courseModel.creditHours),
-                isDark,
-              ),
-              const SizedBox(height: 40),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isRegistered
-                        ? (isDark
-                              ? AppColors.inputFillDark
-                              : const Color(0xffDBDEFF))
-                        : AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      isRegistered = !isRegistered;
-                    });
-                  },
-                  child: Text(
-                    isRegistered ? l10n.drop : l10n.register,
-                    style: GoogleFonts.cairo(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isRegistered
-                          ? (isDark ? Colors.white : AppColors.primary)
-                          : Colors.white,
-                    ),
-                  ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 30),
+                _buildInfoRow(
+                  Icons.hourglass_bottom,
+                  l10n.creditHoursLabel(courseModel.creditHours),
+                  isDark,
+                ),
+                const SizedBox(height: 40),
+                const SizedBox(height: 40),
+                BlocBuilder<CourseRegistrationCubit, CourseRegistrationState>(
+                  builder: (context, state) {
+                    final cubit = context.read<CourseRegistrationCubit>();
+                    final isRegistered = cubit.isRegistered(courseModel.courseID);
+                    final isLoading = cubit.isLoading(courseModel.courseID);
+
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isRegistered
+                              ? (isDark
+                                    ? AppColors.inputFillDark
+                                    : const Color(0xffDBDEFF))
+                              : AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: isLoading
+                            ? null
+                            : () {
+                                if (isRegistered) {
+                                  cubit.dropCourse(
+                                    courseID: courseModel.courseID,
+                                    lang: langCode,
+                                  );
+                                } else {
+                                  cubit.registerCourse(
+                                    courseID: courseModel.courseID,
+                                    lang: langCode,
+                                  );
+                                }
+                              },
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                isRegistered ? l10n.drop : l10n.register,
+                                style: GoogleFonts.cairo(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: isRegistered
+                                      ? (isDark ? Colors.white : AppColors.primary)
+                                      : Colors.white,
+                                ),
+                              ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
       ),
@@ -205,9 +245,16 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: BlocBuilder<CourseRegistrationCubit, CourseRegistrationState>(
+            builder: (context, state) {
+              final cubit = context.read<CourseRegistrationCubit>();
+              final courseId = (course['code'] ?? course['id'] ?? "CODE").toString();
+              final isRegistered = cubit.isRegistered(courseId);
+              final isLoading = cubit.isLoading(courseId);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -331,30 +378,45 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      isRegistered = !isRegistered;
-                    });
-                  },
-                  child: Text(
-                    isRegistered ? l10n.drop : l10n.register,
-                    style: GoogleFonts.cairo(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isRegistered
-                          ? (isDark ? Colors.white : AppColors.primary)
-                          : Colors.white,
-                    ),
-                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () {
+                          if (isRegistered) {
+                            cubit.dropCourse(courseID: courseId, lang: langCode);
+                          } else {
+                            cubit.registerCourse(courseID: courseId, lang: langCode);
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          isRegistered ? l10n.drop : l10n.register,
+                          style: GoogleFonts.cairo(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isRegistered
+                                ? (isDark ? Colors.white : AppColors.primary)
+                                : Colors.white,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 30),
             ],
-          ),
-        ),
+          );
+        },
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   String _localizedCourseField(
     Map<String, dynamic> course,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/bloc/course_registration_cubit.dart';
 import '../../../../core/bloc/student_cubit.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/profile_avatar.dart';
@@ -38,19 +39,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return BlocConsumer<StudentCubit, StudentState>(
-      listener: (context, state) {
-        if (state is StudentError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message), 
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<CourseRegistrationCubit, CourseRegistrationState>(
+          listener: (context, state) {
+            if (state is CourseRegistrationUpdated && state.lastError == null && state.lastCourseId != null) {
+              // Refresh dashboard data when registration state changes successfully
+              _fetchData();
+            }
+          },
+        ),
+        BlocListener<StudentCubit, StudentState>(
+          listener: (context, state) {
+            if (state is StudentError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<StudentCubit, StudentState>(
+        builder: (context, state) {
         // Implementation: Map Cubit state to UI variables
         String studentName = l10n.students;
         String studentId = '';
@@ -310,8 +324,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStatCard({
     required BuildContext context,

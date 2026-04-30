@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/bloc/auth_cubit.dart';
+import '../../../../core/bloc/course_registration_cubit.dart';
 import '../../../../core/bloc/settings_cubit.dart';
 import '../../../../core/bloc/student_cubit.dart';
 import '../../../../core/network/api_constants.dart';
@@ -42,19 +43,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return BlocConsumer<StudentCubit, StudentState>(
-      listener: (context, state) {
-        if (state is StudentError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<CourseRegistrationCubit, CourseRegistrationState>(
+          listener: (context, state) {
+            if (state is CourseRegistrationUpdated && state.lastError == null && state.lastCourseId != null) {
+              // Refresh profile data when registration state changes successfully
+              _fetchProfile();
+            }
+          },
+        ),
+        BlocListener<StudentCubit, StudentState>(
+          listener: (context, state) {
+            if (state is StudentError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<StudentCubit, StudentState>(
+        builder: (context, state) {
         // Implementation: Map Cubit state to Profile UI fields
         String studentName = l10n.students;
         String studentId = '';
@@ -378,8 +392,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildDetailItem(String label, String value, IconData icon, ThemeData theme, {bool isLast = false}) {
     return Container(

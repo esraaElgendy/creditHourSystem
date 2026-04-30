@@ -242,6 +242,12 @@ abstract class AppLocalizations {
   /// **'Course Registration'**
   String get courseRegistration;
 
+  /// No description provided for @courseDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Details'**
+  String get courseDetails;
+
   /// No description provided for @mySchedule.
   ///
   /// In en, this message translates to:

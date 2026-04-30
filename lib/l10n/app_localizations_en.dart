@@ -81,6 +81,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get courseRegistration => 'Course Registration';
 
   @override
+  String get courseDetails => 'Course Details';
+
+  @override
   String get mySchedule => 'My Schedule';
 
   @override

@@ -81,6 +81,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get courseRegistration => 'تسجيل المواد';
 
   @override
+  String get courseDetails => 'تفاصيل المقرر';
+
+  @override
   String get mySchedule => 'جدول المحاضرات';
 
   @override

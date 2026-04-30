@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/bloc/course_cubit.dart';
+import '../../../../core/bloc/course_registration_cubit.dart';
 import '../../../../core/bloc/settings_cubit.dart';
 import '../../../../core/models/course_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'course_details_screen.dart';
+import 'schedule_details_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -96,7 +99,19 @@ class _CoursesScreenState extends State<CoursesScreen> {
       listener: (context, state) {
         _fetchCourses();
       },
-      child: Scaffold(
+      child: BlocListener<CourseRegistrationCubit, CourseRegistrationState>(
+        listener: (context, state) {
+          if (state is CourseRegistrationUpdated && state.lastError != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.lastError!),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+        child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.yourCourses),
           centerTitle: true,
@@ -268,8 +283,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildCourseItem(
     BuildContext context,
@@ -279,49 +295,57 @@ class _CoursesScreenState extends State<CoursesScreen> {
   ) {
     final langCode = Localizations.localeOf(context).languageCode;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppTypography.spacingM),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : const Color(0xffE0E4FF),
-        borderRadius: BorderRadius.circular(AppTypography.radiusM),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppTypography.spacingL,
-          vertical: AppTypography.spacingS,
-        ),
-        title: Text(
-          course.localizedName(langCode),
-          style: AppTypography.subheadingM.copyWith(
-            color: isDark ? Colors.white : AppColors.primaryDark,
+    return BlocBuilder<CourseRegistrationCubit, CourseRegistrationState>(
+      builder: (context, state) {
+        final isRegistered = context.read<CourseRegistrationCubit>().isRegistered(course.courseID);
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppTypography.spacingM),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : const Color(0xffE0E4FF),
+            borderRadius: BorderRadius.circular(AppTypography.radiusM),
           ),
-        ),
-        subtitle: Row(
-          children: [
-            Icon(
-              Icons.hourglass_bottom,
-              size: 16,
-              color: isDark ? Colors.grey[400] : Colors.grey,
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppTypography.spacingL,
+              vertical: AppTypography.spacingS,
             ),
-            const SizedBox(width: AppTypography.spacingXS),
-            Text(
-              "${course.creditHours} ${l10n.creditHours}",
-              style: AppTypography.captionM.copyWith(
-                color: isDark ? Colors.grey[400] : null,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ScheduleDetailsScreen(courseModel: course),
+                ),
+              );
+            },
+            title: Text(
+              course.localizedName(langCode),
+              style: AppTypography.subheadingM.copyWith(
+                color: isDark ? Colors.white : AppColors.primaryDark,
               ),
             ),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CourseDetailsScreen(courseModel: course),
+            subtitle: Row(
+              children: [
+                Icon(
+                  Icons.hourglass_bottom,
+                  size: 16,
+                  color: isDark ? Colors.grey[400] : Colors.grey,
+                ),
+                const SizedBox(width: AppTypography.spacingXS),
+                Text(
+                  "${course.creditHours} ${l10n.creditHours}",
+                  style: AppTypography.captionM.copyWith(
+                    color: isDark ? Colors.grey[400] : null,
+                  ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
+            trailing: isRegistered 
+                ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
+                : null,
+          ),
+        );
+      },
     );
   }
 }
