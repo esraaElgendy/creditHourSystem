@@ -1,5 +1,14 @@
 import 'package:equatable/equatable.dart';
 
+/// Represents the status of a course enrollment
+enum CourseStatusType {
+  registered,
+  waiting,
+  prerequisiteRequired,
+  available,
+  unknown,
+}
+
 /// Represents a single course with localization support
 class CourseModel extends Equatable {
   /// Unique identifier for the course
@@ -14,11 +23,23 @@ class CourseModel extends Equatable {
   /// Credit hours for the course
   final int creditHours;
 
+  /// Course registration status (can come from API or be determined locally)
+  final CourseStatusType status;
+
+  /// Additional status information (e.g., queue position for waiting status)
+  final String? statusInfo;
+
+  /// Prerequisite requirement message (if status is prerequisiteRequired)
+  final String? prerequisiteMessage;
+
   const CourseModel({
     required this.courseID,
     required this.courseNameEn,
     this.courseNameAr,
     required this.creditHours,
+    this.status = CourseStatusType.unknown,
+    this.statusInfo,
+    this.prerequisiteMessage,
   });
 
   /// Parse CourseModel from JSON API response
@@ -52,11 +73,28 @@ class CourseModel extends Equatable {
         json['creditHours'] ?? json['credit_hours'] ?? 0,
       );
 
+      // Parse status if available from API
+      final statusStr = _safeToString(json['status'] ?? '').toLowerCase();
+      final status = _parseStatus(statusStr);
+
+      // Parse status info (e.g., queue position)
+      final statusInfo = _safeToStringNullable(
+        json['statusInfo'] ?? json['queuePosition'],
+      );
+
+      // Parse prerequisite message if available
+      final prerequisiteMessage = _safeToStringNullable(
+        json['prerequisiteMessage'] ?? json['prerequisiteInfo'],
+      );
+
       return CourseModel(
         courseID: courseID,
         courseNameEn: courseNameEn,
         courseNameAr: courseNameAr,
         creditHours: creditHours,
+        status: status,
+        statusInfo: statusInfo,
+        prerequisiteMessage: prerequisiteMessage,
       );
     } catch (e) {
       // Fallback with defaults to prevent crashes
@@ -65,7 +103,25 @@ class CourseModel extends Equatable {
         courseNameEn: _safeToString(json['courseNameEn'] ?? 'Unknown Course'),
         courseNameAr: null,
         creditHours: 0,
+        status: CourseStatusType.unknown,
       );
+    }
+  }
+
+  /// Parse status string to CourseStatusType enum
+  static CourseStatusType _parseStatus(String statusStr) {
+    switch (statusStr) {
+      case 'registered':
+        return CourseStatusType.registered;
+      case 'waiting':
+        return CourseStatusType.waiting;
+      case 'prerequisite_required':
+      case 'prerequisiterequired':
+        return CourseStatusType.prerequisiteRequired;
+      case 'available':
+        return CourseStatusType.available;
+      default:
+        return CourseStatusType.unknown;
     }
   }
 
@@ -119,6 +175,9 @@ class CourseModel extends Equatable {
     courseNameEn,
     courseNameAr,
     creditHours,
+    status,
+    statusInfo,
+    prerequisiteMessage,
   ];
 }
 

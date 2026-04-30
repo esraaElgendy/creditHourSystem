@@ -1,58 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/bloc/schedule_cubit.dart';
+import '../../../../core/models/schedule_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../l10n/app_localizations.dart';
 
-class ScheduleScreen extends StatelessWidget {
+class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
+
+  @override
+  State<ScheduleScreen> createState() => _ScheduleScreenState();
+}
+
+class _ScheduleScreenState extends State<ScheduleScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSchedule();
+    });
+  }
+
+  void _loadSchedule() {
+    final lang = Localizations.localeOf(context).languageCode;
+    context.read<ScheduleCubit>().loadSchedule(lang: lang);
+  }
+
+  Map<String, List<ScheduleModel>> _groupScheduleByDay(
+    List<ScheduleModel> schedule,
+  ) {
+    final Map<String, List<ScheduleModel>> grouped = {};
+    for (var session in schedule) {
+      final day = session.day.isNotEmpty ? session.day : 'Unknown';
+      if (!grouped.containsKey(day)) {
+        grouped[day] = [];
+      }
+      grouped[day]!.add(session);
+    }
+    return grouped;
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    // Mock Data based on screenshot
-    final scheduleData = [
-      {
-        "day": "Saturday",
-        "lectures": [
-          {
-            "name": "Computer Progaming", // Typography in screenshot
-            "type": "LECTURE",
-            "time": "08:00 - 10:00",
-            "instructor": "Dr.Khaled",
-            "location": "Hall A - Floor 2",
-            "color": const Color(0xff5D65D8), // Purple/Blue
-          },
-          {
-            "name": "Data Structures",
-            "type": "LAB",
-            "time": "10:30 - 12:00",
-            "instructor": "Eng.Mariem",
-            "location": "Lab 4 - Floor 4",
-            "color": const Color(0xff4D5596), // Darker Blue
-          },
-        ],
-      },
-      {
-        "day": "Sunday",
-        "lectures": [], // Empty
-      },
-      {
-        "day": "Monday",
-        "lectures": [
-          {
-            "name": "Math 1",
-            "type": "LECTURE",
-            "time": "08:00 - 10:00",
-            "instructor": "Dr.Hesham",
-            "location": "Hall B - Floor 3",
-            "color": const Color(0xff5D65D8),
-          },
-        ],
-      },
-    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -66,66 +59,112 @@ class ScheduleScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const BackButton(
-          color: Colors.black,
-        ), // Using default back button color or theme
+        leading: BackButton(color: isDark ? Colors.white : Colors.black),
         actions: [
           IconButton(
             icon: Icon(
               Icons.calendar_today_outlined,
               color: theme.primaryColor,
             ),
-            onPressed: () {},
+            onPressed: _loadSchedule, // Added refresh functionality
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: scheduleData.length,
-        itemBuilder: (context, index) {
-          final dayData = scheduleData[index];
-          final String day = dayData['day'] as String;
-          final List lectures = dayData['lectures'] as List;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppTypography.spacingM,
-                ),
-                child: Text(
-                  day,
-                  style: AppTypography.subheadingL.copyWith(
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: lectures.isEmpty ? 180 : 240,
-                child: lectures.isEmpty
-                    ? _buildEmptyState(context, isDark)
-                    : ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 4),
-                        itemCount: lectures.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 16),
-                        itemBuilder: (context, lectureIndex) {
-                          final lecture =
-                              lectures[lectureIndex] as Map<String, dynamic>;
-                          return Container(
-                            width: 280,
-                            alignment: Alignment.center,
-                            child: _buildLectureCard(context, lecture, isDark),
-                          );
-                        },
+      body: BlocBuilder<ScheduleCubit, ScheduleState>(
+        builder: (context, state) {
+          if (state is ScheduleLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is ScheduleError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.message,
+                      style: AppTypography.bodyL.copyWith(
+                        color: AppColors.error,
                       ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadSchedule,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-            ],
-          );
+            );
+          } else if (state is ScheduleLoaded) {
+            if (state.schedule.isEmpty) {
+              return Center(child: _buildEmptyState(context, isDark, true));
+            }
+
+            final groupedSchedule = _groupScheduleByDay(state.schedule);
+            final days = groupedSchedule.keys.toList();
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                _loadSchedule();
+              },
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: days.length,
+                itemBuilder: (context, index) {
+                  final String day = days[index];
+                  final List<ScheduleModel> lectures = groupedSchedule[day]!;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppTypography.spacingM,
+                        ),
+                        child: Text(
+                          day,
+                          style: AppTypography.subheadingL.copyWith(
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: lectures.isEmpty ? 180 : 240,
+                        child: lectures.isEmpty
+                            ? _buildEmptyState(context, isDark, false)
+                            : ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                padding: const EdgeInsets.only(bottom: 4),
+                                itemCount: lectures.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 16),
+                                itemBuilder: (context, lectureIndex) {
+                                  final lecture = lectures[lectureIndex];
+                                  return Container(
+                                    width: 280,
+                                    alignment: Alignment.center,
+                                    child: _buildLectureCard(
+                                      context,
+                                      lecture,
+                                      isDark,
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
+              ),
+            );
+          }
+          return const SizedBox.shrink();
         },
       ),
     );
@@ -133,9 +172,11 @@ class ScheduleScreen extends StatelessWidget {
 
   Widget _buildLectureCard(
     BuildContext context,
-    Map<String, dynamic> lecture,
+    ScheduleModel lecture,
     bool isDark,
   ) {
+    final isLecture = lecture.sessionType.toUpperCase() == 'LECTURE';
+
     return Container(
       height: 200,
       margin: const EdgeInsets.only(bottom: 16),
@@ -143,7 +184,7 @@ class ScheduleScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xff1E1E2C)
-            : const Color(0xffEBEBFF), // Light purple bg from screenshot
+            : const Color(0xffEBEBFF), // Light purple bg
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -155,25 +196,30 @@ class ScheduleScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  lecture['name'],
+                  lecture.courseName.isNotEmpty
+                      ? lecture.courseName
+                      : lecture.courseID,
                   style: AppTypography.subheadingM.copyWith(
                     color: const Color(0xff2A31FA),
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppTypography.spacingM,
                   vertical: AppTypography.spacingXS,
                 ),
                 decoration: BoxDecoration(
-                  color: lecture['type'] == 'LECTURE'
+                  color: isLecture
                       ? const Color(0xff6C72FF)
                       : const Color(0xff4D5596),
                   borderRadius: BorderRadius.circular(AppTypography.radiusXL),
                 ),
                 child: Text(
-                  lecture['type'],
+                  lecture.sessionType,
                   style: AppTypography.badgeM.copyWith(color: Colors.white),
                 ),
               ),
@@ -182,11 +228,15 @@ class ScheduleScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoRow(Icons.access_time_filled, lecture['time'], isDark),
+              _buildInfoRow(
+                Icons.access_time_filled,
+                "${lecture.startTime} - ${lecture.endTime}",
+                isDark,
+              ),
               const SizedBox(height: 16),
-              _buildInfoRow(Icons.person, lecture['instructor'], isDark),
+              _buildInfoRow(Icons.person, lecture.instructorName, isDark),
               const SizedBox(height: 16),
-              _buildInfoRow(Icons.location_on, lecture['location'], isDark),
+              _buildInfoRow(Icons.location_on, lecture.room, isDark),
             ],
           ),
         ],
@@ -199,31 +249,40 @@ class ScheduleScreen extends StatelessWidget {
       children: [
         Icon(icon, size: 20, color: const Color(0xff2A31FA)),
         const SizedBox(width: AppTypography.spacingXS),
-        Text(
-          text,
-          style: AppTypography.bodyS.copyWith(
-            color: isDark ? Colors.grey[300] : Colors.black87,
+        Expanded(
+          child: Text(
+            text.isNotEmpty ? text : '-',
+            style: AppTypography.bodyS.copyWith(
+              color: isDark ? Colors.grey[300] : Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, bool isDark) {
+  Widget _buildEmptyState(BuildContext context, bool isDark, bool fullPage) {
     final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40),
+      padding: EdgeInsets.symmetric(vertical: fullPage ? 80 : 40),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xff1E1E2C) : const Color(0xffEBEBFF),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.calendar_today, size: 40, color: const Color(0xff9DA2FF)),
-          const SizedBox(height: 10),
+          Icon(
+            Icons.calendar_today,
+            size: fullPage ? 64 : 40,
+            color: const Color(0xff9DA2FF),
+          ),
+          SizedBox(height: fullPage ? 16 : 10),
           Text(
-            l10n.noLectures,
+            l10n.noLectures, // Reverting to original valid l10n property
             style: AppTypography.bodyM.copyWith(color: const Color(0xff9DA2FF)),
           ),
         ],
